@@ -1,0 +1,35 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Packaging & distribution
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# Testing & cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local data & logs
+esg_audit_log.json
+trained_grid_model.json
+*.tmp
+*.log
+.env
+.env.*
+
+# Editor & OS metadata
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
