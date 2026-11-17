@@ -1,7 +1,7 @@
 # GridScale
 
 [![CI](https://github.com/Ananya6722/gridscale/actions/workflows/ci.yml/badge.svg)](https://github.com/Ananya6722/gridscale/actions)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey)](https://github.com/Ananya6722/gridscale)
 
