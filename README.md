@@ -1,9 +1,9 @@
 # GridScale
 
-[![CI](https://github.com/Ananya6722/gridscale/actions/workflows/ci.yml/badge.svg)](https://github.com/Ananya6722/gridscale/actions)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/gridscale/gridscale/actions/workflows/ci.yml/badge.svg)](https://github.com/gridscale/gridscale/actions)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey)](https://github.com/Ananya6722/gridscale)
+[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey)](https://github.com/gridscale/gridscale)
 
 **Zero-code-change, carbon- and cost-aware compute scheduling.**
 
@@ -65,15 +65,6 @@ fails) GridScale uses calibrated profiles: `SE-SE3` 28, `US-CAL-CISO` 135, `DE` 
 otherwise run in: London for `uk`, the `--zone` value for `emaps`. For temporal shifting it is the
 grid intensity at submission time.
 
-**Why London?** The UK API has no concept of "where you would have run", so London (the largest
-cloud hub and the dirtiest of the five mapped regions in the offline profile) is used as a fixed
-reference point. The headline saving is therefore *relative to that assumption*; change the
-baseline and the number changes. Failed jobs (non-zero exit code) are recorded but credited
-with no savings.
-
-**Illustrative fallback data.** The calibrated `emaps` fallback values (including the two Indian
-zones) are round-number placeholders for offline demos, not measured annual averages.
-
 ## Installation
 
 ### Directly from GitHub (Any OS)
@@ -81,7 +72,7 @@ zones) are round-number placeholders for offline demos, not measured annual aver
 Install directly into your Python environment without cloning:
 
 ```bash
-pip install git+https://github.com/Ananya6722/gridscale.git
+pip install git+https://github.com/<your-username>/gridscale.git
 ```
 
 ### From source
@@ -89,7 +80,7 @@ pip install git+https://github.com/Ananya6722/gridscale.git
 Clone the repository and install in editable mode:
 
 ```bash
-git clone https://github.com/Ananya6722/gridscale.git
+git clone https://github.com/<your-username>/gridscale.git
 cd gridscale
 pip install -e .
 

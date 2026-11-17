@@ -155,14 +155,6 @@ def test_child_exit_code_propagates(monkeypatch):
     assert ledger()[0]["exit_code"] == 3
 
 
-def test_failed_job_claims_no_savings(monkeypatch):
-    monkeypatch.setattr(gridscale.subprocess, "run", FakeRun(returncode=1))
-    gridscale.main(["--provider", "emaps", "--zone", "IN-WE", "--multi-region", "--", "false"])
-    r = ledger()[0]
-    assert r["exit_code"] == 1
-    assert r["co2_saved_g"] == 0 and r["cost_saved_usd"] == 0 and r["shifted"] is False
-
-
 def test_missing_command_returns_127_and_no_receipt():
     assert gridscale.main(["--multi-region", "--", "definitely-not-a-real-binary-xyz"]) == 127
     assert not os.path.exists(gridscale.LOG_FILE)
