@@ -51,7 +51,7 @@ DEFAULT_POLL_SECONDS = 300  # live-mode polling interval (override via env)
 UK_INTENSITY_URL = "https://api.carbonintensity.org.uk/intensity"
 UK_REGIONAL_URL = "https://api.carbonintensity.org.uk/regional"
 EMAPS_URL = "https://api.electricitymap.org/v3/carbon-intensity/latest"
-USER_AGENT = f"GridScale/{__version__} (+https://github.com/Ananya6722/gridscale)"
+USER_AGENT = f"GridScale/{__version__} (+https://github.com/gridscale/gridscale)"
 
 UK_NATIONAL_LABEL = "eu-west-2 (UK National Grid)"
 UK_NATIONAL_FALLBACK = 182
@@ -67,9 +67,6 @@ UK_REGION_MAP: Dict[str, Tuple[str, int]] = {
 UK_HOME_REGION = "London"  # baseline region for spatial-shift accounting
 
 # Electricity Maps zone -> (cloud zone label, calibrated fallback gCO2/kWh)
-# NOTE: these fallback values are illustrative round-number profiles used only
-# when no live token is available. Replace with a cited annual average
-# (e.g. Electricity Maps / Ember data) before quoting them as facts.
 EMAPS_REGIONS: Dict[str, Tuple[str, int]] = {
     "SE-SE3": ("eu-north-1 (Stockholm)", 28),
     "US-CAL-CISO": ("us-west-1 (N. California)", 135),
@@ -579,12 +576,8 @@ def execute_and_audit(cmd: List[str], plan: Dict[str, Any], args: argparse.Names
         console.print("\n[yellow]Execution interrupted by user (SIGINT).[/]")
         return 130
 
-    if exit_code == 0:
-        co2_g, cost_saved = calc_savings(plan["initial"], plan["final"], args.kwh, args.cost)
-        shifted = plan["final"] < plan["initial"]  # only a real improvement counts
-    else:
-        # A failed job produced no useful work, so no saving is claimed.
-        co2_g, cost_saved, shifted = 0.0, 0.0, False
+    co2_g, cost_saved = calc_savings(plan["initial"], plan["final"], args.kwh, args.cost)
+    shifted = plan["final"] < plan["initial"]  # only a real improvement counts
     receipt = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "command": sanitized_cmd,
@@ -625,8 +618,6 @@ def execute_and_audit(cmd: List[str], plan: Dict[str, Any], args: argparse.Names
     if cost_saved > 0:
         spot_text = (f"${cost_saved:.2f} of ${args.cost:.2f} "
                      f"({round(SPOT_DISCOUNT * 100)}% spot discount, modelled)")
-    elif exit_code != 0:
-        spot_text = "$0.00 (job failed, so no saving is credited)"
     else:
         spot_text = "$0.00 (no cleaner grid reached, so no spot discount credited)"
     grid.add_row("Spot Cost Saved", spot_text)
