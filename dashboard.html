@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GridScale ESG Dashboard</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"
+          crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --bg-color: #1e1e2f;
+      --text-color: #e0e0ff;
+      --muted: #a0a0c0;
+      --card-bg: #2a2a4d;
+      --accent: #4a90e2;
+      --accent-hover: #357ab8;
+      --header-accent: #4a90e2;
+      --table-header: #3a3a6a;
+      --border: #444;
+      --chart-text: #ccc;
+      --warn-bg: #5a4a10;
+      --warn-text: #ffe9a0;
+    }
+    .light {
+      --bg-color: #f7f7f7;
+      --text-color: #222;
+      --muted: #555;
+      --card-bg: #ffffff;
+      --accent: #0066cc;
+      --accent-hover: #004c99;
+      --header-accent: #0066cc;
+      --table-header: #e0e0e0;
+      --border: #ccc;
+      --chart-text: #333;
+      --warn-bg: #fff3cd;
+      --warn-text: #664d03;
+    }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 1rem;
+      transition: background-color .3s, color .3s;
+    }
+    h1 {
+      text-align: center;
+      margin: .5rem 0 1rem;
+      border-bottom: 3px solid var(--header-accent);
+      padding-bottom: .5rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+    }
+    h1 small { font-weight: normal; color: var(--muted); }
+    .muted { color: var(--muted); }
+    .center { text-align: center; }
+    #demoBanner {
+      display: none;
+      max-width: 800px;
+      margin: 0 auto 1rem;
+      padding: .6rem 1rem;
+      border-radius: 6px;
+      background: var(--warn-bg);
+      color: var(--warn-text);
+      text-align: center;
+      font-weight: bold;
+    }
+    .cards { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
+    .card {
+      background: var(--card-bg); border-radius: 8px; padding: 1rem;
+      min-width: 200px; text-align: center;
+    }
+    .card h2 { margin: .5rem 0; font-size: 1.2rem; }
+    .card p { font-size: 1.4rem; margin: .3rem 0; }
+    .chart-container { max-width: 800px; height: 350px; margin: 2rem auto; position: relative; }
+    table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+    th, td { padding: .5rem; border: 1px solid var(--border); }
+    th { background: var(--table-header); }
+    .table-wrap { overflow-x: auto; }
+    button {
+      background: var(--accent); color: white; border: none;
+      padding: .5rem 1rem; border-radius: 4px; cursor: pointer;
+    }
+    button:hover { background: var(--accent-hover); }
+    #latestReceipt {
+      margin: 1rem auto; max-width: 700px; padding: .8rem;
+      background: var(--card-bg); border-radius: 6px; word-break: break-word;
+    }
+    footer { margin-top: 2rem; text-align: center; color: var(--muted); }
+    footer a { color: var(--accent); }
+    @media (max-width: 600px) {
+      .cards { flex-direction: column; align-items: center; }
+    }
+    @media print {
+      .card, .chart-container, button, #themeBtn, #latestReceipt, #demoBanner { display: none; }
+      table { font-size: 10pt; }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>
+    GridScale ESG Dashboard
+    <small>(Carbon-aware scheduling demo)</small>
+  </h1>
+  <p id="lastUpdate" class="center muted" style="font-size:0.9rem;"></p>
+
+  <div id="demoBanner">
+    Showing built-in sample data. esg_audit_log.json could not be loaded (open this page through a
+    local server, e.g. <code>python -m http.server</code>, from the folder that contains the log).
+  </div>
+
+  <div class="center" style="margin:1rem;">
+    <button id="themeBtn">Toggle Dark/Light</button>
+    &nbsp;&nbsp;
+    <span id="slaInfo" class="muted" style="font-weight:bold;"></span>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <h2><i class="fas fa-leaf"></i> Carbon Shift</h2>
+      <p id="carbon-shift-value">-</p>
+      <small class="muted">energy-weighted average reduction</small>
+    </div>
+    <div class="card">
+      <h2><i class="fas fa-cloud-sun"></i> Scope 2 CO2 Avoided</h2>
+      <p id="scope2-value">-</p>
+      <small class="muted">estimated from --kwh</small>
+    </div>
+    <div class="card">
+      <h2><i class="fas fa-dollar-sign"></i> Cost Saved (USD)</h2>
+      <p id="cost-saved-value">-</p>
+      <small class="muted">modelled 58% spot discount</small>
+    </div>
+  </div>
+
+  <p id="countdown" class="center muted" style="margin-top:.5rem;"></p>
+
+  <div class="chart-container">
+    <canvas id="carbonChart"></canvas>
+  </div>
+
+  <div class="center" style="margin:1rem;">
+    <button id="exportJsonBtn">Export JSON</button>
+    <button id="exportCsvBtn">Export CSV</button>
+  </div>
+
+  <div id="latestReceipt">
+    <strong>Last job receipt</strong><br>
+    <span id="receipt-text">Loading...</span>
+  </div>
+
+  <div class="table-wrap">
+    <table id="ledgerTable">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Region</th>
+          <th>Strategy</th>
+          <th>Initial gCO2/kWh</th>
+          <th>Final gCO2/kWh</th>
+          <th>CO2 Saved (g)</th>
+          <th>Cost Saved (USD)</th>
+          <th>Delay (min)</th>
+          <th>Trigger</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <footer>
+    Powered by <a href="https://github.com/Ananya6722/gridscale">GridScale</a>
+  </footer>
+
+  <script>
+    /* ===== Helpers ===== */
+    // Escape text before it goes into innerHTML (ledger values come from files).
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    // Quote a CSV field if it contains a comma, quote or newline.
+    function csvCell(v) {
+      const s = String(v == null ? '' : v);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
+    function cssVar(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    /* ===== Theme toggle (class goes on <html> so :root variables follow it) ===== */
+    document.getElementById('themeBtn').onclick = () => {
+      document.documentElement.classList.toggle('light');
+      document.body.classList.toggle('light');
+      initDashboard(); // redraw chart with the new colours
+    };
+
+    /* ===== Sample data (used only if the real ledger cannot be loaded) ===== */
+    const fallbackData = [
+      {
+        timestamp: "2026-11-17T18:24:24.881268+00:00",
+        command: "python real_workload.py",
+        strategy: "temporal-demo",
+        provider: "uk",
+        execution_region: "eu-west-2 (UK National Grid)",
+        trigger_reason: "SLA deadline override (max delay of 240 min reached)",
+        data_source: "Simulated 12-hour grid cycle",
+        initial_gco2_kwh: 285,
+        final_gco2_kwh: 195,
+        delay_minutes: 240,
+        est_kwh: 25.0,
+        baseline_cost_usd: 40.0,
+        co2_saved_g: 2250.0,
+        cost_saved_usd: 23.2,
+        shifted: true,
+        exit_code: 0
+      },
+      {
+        timestamp: "2026-11-17T18:24:40.482340+00:00",
+        command: "python real_workload.py",
+        strategy: "spatial",
+        provider: "uk",
+        execution_region: "eu-north-1a (Glasgow/Scotland)",
+        trigger_reason: "Multi-region routing: cleanest of 5 regions",
+        data_source: "Offline fallback (UK regional profile)",
+        initial_gco2_kwh: 236,
+        final_gco2_kwh: 38,
+        delay_minutes: 0,
+        est_kwh: 25.0,
+        baseline_cost_usd: 40.0,
+        co2_saved_g: 4950.0,
+        cost_saved_usd: 23.2,
+        shifted: true,
+        exit_code: 0
+      }
+    ];
+
+    /* ===== Load ledger. Returns { data, isDemo } ===== */
+    async function loadLedger() {
+      try {
+        const resp = await fetch('esg_audit_log.json', { cache: 'no-store' });
+        if (!resp.ok) throw new Error('fetch failed: ' + resp.status);
+        const data = await resp.json();
+        if (!Array.isArray(data)) throw new Error('ledger is not a list');
+        return { data, isDemo: false };
+      } catch (e) {
+        console.warn('Using sample data.', e);
+        return { data: fallbackData, isDemo: true };
+      }
+    }
+
+    /* ===== KPI cards ===== */
+    function populateMetrics(data) {
+      // Weight each job by its energy so a 1 kWh job does not count as much as a 100 kWh one.
+      let wInitial = 0, wFinal = 0;
+      data.forEach(r => {
+        const kwh = r.est_kwh || 0;
+        wInitial += (r.initial_gco2_kwh || 0) * kwh;
+        wFinal   += (r.final_gco2_kwh   || 0) * kwh;
+      });
+      const totalSaved = data.reduce((s, r) => s + (r.co2_saved_g    || 0), 0);
+      const totalCost  = data.reduce((s, r) => s + (r.cost_saved_usd || 0), 0);
+      const shiftPct = wInitial ? ((wInitial - wFinal) / wInitial * 100).toFixed(1) : '0.0';
+
+      document.getElementById('carbon-shift-value').textContent = shiftPct + '%';
+      document.getElementById('scope2-value').textContent = (totalSaved / 1000).toFixed(2) + ' kg';
+      document.getElementById('cost-saved-value').textContent = '$' + totalCost.toFixed(2);
+    }
+
+    /* ===== SLA info from the data instead of a hardcoded value ===== */
+    function showSla(data) {
+      const delays = data.map(r => r.delay_minutes || 0);
+      const maxDelay = delays.length ? Math.max.apply(null, delays) : 0;
+      document.getElementById('slaInfo').textContent =
+        'Longest delay in ledger: ' + maxDelay + ' min';
+    }
+
+    /* ===== Ledger table ===== */
+    function populateTable(data) {
+      const tbody = document.querySelector('#ledgerTable tbody');
+      tbody.innerHTML = '';
+      data.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + esc(r.timestamp) + '</td>' +
+          '<td>' + esc(r.execution_region || 'N/A') + '</td>' +
+          '<td>' + esc(r.strategy || '-') + '</td>' +
+          '<td>' + esc(r.initial_gco2_kwh ?? '-') + '</td>' +
+          '<td>' + esc(r.final_gco2_kwh ?? '-') + '</td>' +
+          '<td>' + esc(r.co2_saved_g ?? '-') + '</td>' +
+          '<td>$' + Number(r.cost_saved_usd ?? 0).toFixed(2) + '</td>' +
+          '<td>' + esc(r.delay_minutes ?? 0) + '</td>' +
+          '<td>' + esc(r.trigger_reason || '-') + '</td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    /* ===== Latest receipt (textContent, so no escaping needed) ===== */
+    function showLatestReceipt(data) {
+      const el = document.getElementById('receipt-text');
+      if (!data.length) { el.textContent = 'No receipt yet.'; return; }
+      const last = data[data.length - 1];
+      el.textContent =
+        'Time: ' + last.timestamp +
+        ' | Region: ' + (last.execution_region || 'N/A') +
+        ' | Strategy: ' + (last.strategy || '-') +
+        ' | CO2 saved: ' + last.co2_saved_g + ' g' +
+        ' | Cost saved: $' + Number(last.cost_saved_usd || 0).toFixed(2);
+    }
+
+    /* ===== Chart ===== */
+    let chartInstance = null;
+
+    function renderChart(data) {
+      const filtered = data.filter(r => r.execution_region);
+      const ctx = document.getElementById('carbonChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+
+      const text = cssVar('--chart-text');
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: filtered.map(r => r.execution_region + ' [' + r.strategy + ']'),
+          datasets: [{
+            label: 'CO2 Saved (g)',
+            data: filtered.map(r => r.co2_saved_g),
+            backgroundColor: cssVar('--accent')
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { color: text },
+                 title: { display: true, text: 'grams CO2e', color: text } },
+            x: { ticks: { color: text } }
+          },
+          plugins: { legend: { labels: { color: text } } }
+        }
+      });
+    }
+
+    /* ===== Export handlers (reuse the data already on screen's source) ===== */
+    function download(blob, name) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    document.getElementById('exportJsonBtn').onclick = async () => {
+      const { data } = await loadLedger();
+      download(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
+               'esg_audit_log_export.json');
+    };
+
+    document.getElementById('exportCsvBtn').onclick = async () => {
+      const { data } = await loadLedger();
+      const cols = ['timestamp', 'execution_region', 'strategy', 'initial_gco2_kwh',
+                    'final_gco2_kwh', 'co2_saved_g', 'cost_saved_usd', 'delay_minutes',
+                    'trigger_reason'];
+      const rows = data.map(r => cols.map(c => csvCell(r[c])).join(','));
+      download(new Blob([[cols.join(',')].concat(rows).join('\n')], { type: 'text/csv' }),
+               'esg_audit_log_export.csv');
+    };
+
+    /* ===== Dashboard init ===== */
+    async function initDashboard() {
+      document.getElementById('lastUpdate').textContent =
+        'Data refreshed: ' + new Date().toLocaleString();
+      const { data, isDemo } = await loadLedger();
+      document.getElementById('demoBanner').style.display = isDemo ? 'block' : 'none';
+      populateMetrics(data);
+      showSla(data);
+      populateTable(data);
+      renderChart(data);
+      showLatestReceipt(data);
+    }
+
+    /* ===== Auto-refresh every 20 seconds ===== */
+    const REFRESH_SECS = 20;
+    let secsLeft = REFRESH_SECS;
+    const countdownEl = document.getElementById('countdown');
+
+    setInterval(() => {
+      countdownEl.textContent = 'Next refresh in ' + Math.max(0, secsLeft) + 's';
+      secsLeft--;
+    }, 1000);
+
+    async function refreshLoop() {
+      await initDashboard();
+      secsLeft = REFRESH_SECS;
+    }
+
+    (async () => {
+      await initDashboard();
+      setInterval(refreshLoop, REFRESH_SECS * 1000);
+    })();
+  </script>
+</body>
+</html>
